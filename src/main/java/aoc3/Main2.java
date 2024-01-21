@@ -2,12 +2,16 @@ package aoc3;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 
-public class Main {
+public class Main2 {
 
-    private static final char DOT = '.';
     private static char[][] input;
+    private static final char GEAR_SPECIAL_CHARACTER = '*';
 
     public static void main(String[] args) throws Exception {
         input = readInput();
@@ -15,33 +19,43 @@ public class Main {
 
         for (int i = 0; i < input.length; i++) {
             for (int j = 0; j < input[i].length; j++) {
-                if (isSpecialCharacter(input[i][j])) {
+                if (input[i][j] == GEAR_SPECIAL_CHARACTER) {
                     System.out.println(String.format("processing special character %s [%s][%s]", input[i][j], i, j));
 
+                    Map<LookAround, Integer> tmpResultMap = new HashMap<>();
+
                     // search for digit in surrounding
-                    if (i > 0 && j > 0) {
-                        result += findAndReplaceNumber(i - 1, j - 1);
+                    for (LookAround lookAround : LookAround.values()) {
+                        if (lookAround.getCheck().test(i, j, input)) {
+                            tmpResultMap.put(lookAround, findNumber(i + lookAround.getI_modification(),
+                                    j + lookAround.getJ_modification()));
+                        }
                     }
-                    if (i > 0) {
-                        result += findAndReplaceNumber(i - 1, j);
+
+                    if (tmpResultMap.get(LookAround.UP) != null) {
+                        tmpResultMap.put(LookAround.UP_LEFT, null);
+                        tmpResultMap.put(LookAround.UP_RIGHT, null);
                     }
-                    if (i > 0 && input[i - 1].length > j + 1) {
-                        result += findAndReplaceNumber(i - 1, j + 1);
+                    if (tmpResultMap.get(LookAround.DOWN) != null) {
+                        tmpResultMap.put(LookAround.DOWN_LEFT, null);
+                        tmpResultMap.put(LookAround.DOWN_RIGHT, null);
                     }
-                    if (input[i].length > j + 1) {
-                        result += findAndReplaceNumber(i, j + 1);
+
+                    int tmpResult = 1;
+                    byte notNullCounter = 0;
+                    Set<Entry<LookAround, Integer>> entrySet = tmpResultMap.entrySet();
+                    for (Entry<LookAround, Integer> entry : entrySet) {
+                        if (entry.getValue() != null) {
+                            if (notNullCounter > 2)
+                                break;
+
+                            tmpResult = tmpResult * entry.getValue();
+                            notNullCounter++;
+                        }
                     }
-                    if (input.length > i + 1 && input[i + 1].length > j + 1) {
-                        result += findAndReplaceNumber(i + 1, j + 1);
-                    }
-                    if (input.length > i + 1) {
-                        result += findAndReplaceNumber(i + 1, j);
-                    }
-                    if (input.length > i + 1 && j > 0) {
-                        result += findAndReplaceNumber(i + 1, j - 1);
-                    }
-                    if (j > 0) {
-                        result += findAndReplaceNumber(i, j - 1);
+                    if (notNullCounter == 2) {
+                        System.out.println("Has 2 correct values: " + tmpResult);
+                        result += tmpResult;
                     }
                 }
             }
@@ -67,23 +81,18 @@ public class Main {
         return result;
     }
 
-    private static boolean isSpecialCharacter(char c) {
-        return !Character.isDigit(c) && c != DOT;
-    }
-
-    private static int findAndReplaceNumber(int i, int j) throws Exception {
+    private static Integer findNumber(int i, int j) throws Exception {
         if (!Character.isDigit(input[i][j]))
-            return 0;
+            return null;
 
         StringBuilder result = new StringBuilder();
 
         // is there something in LEFT ?
         while (Character.isDigit(input[i][j])) {
             result.append(input[i][j]);
-            input[i][j] = DOT;
-            if (j == 0)
-                break; // can not move more to left
             j--;
+            if (j == -1)
+                break; // can not move more to left
         }
 
         if (!result.isEmpty()) {
@@ -96,12 +105,11 @@ public class Main {
         j = j + result.length() + 1;
         while (input[i].length > j && Character.isDigit(input[i][j])) {
             result.append(input[i][j]);
-            input[i][j] = DOT;
             j++;
         }
 
         if (result.isEmpty())
-            return 0;
+            return null;
         int foundedNumber = Integer.parseInt(result, 0, result.length(), 10);
         System.out.println("Found number: " + foundedNumber);
         return foundedNumber;
